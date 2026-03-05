@@ -1,0 +1,28 @@
+{
+  "name": "@socialflow/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.30.0",
+    "ioredis": "^5.4.0",
+    "drizzle-orm": "^0.41.0",
+    "postgres": "^3.4.0",
+    "nanoid": "^5.0.0",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@socialflow/db": "workspace:*",
+    "@socialflow/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
