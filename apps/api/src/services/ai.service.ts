@@ -4,6 +4,9 @@ import type { AIGenerateResponse, AIVariant } from "@socialflow/shared/types";
 
 const anthropic = new Anthropic();
 
+const MODEL_SONNET = "claude-sonnet-4-20250514";
+const MODEL_HAIKU = "claude-haiku-4-5-20251001";
+
 export class AIService {
   async generateContent(input: {
     prompt: string;
@@ -19,7 +22,7 @@ export class AIService {
       .join("\n");
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: MODEL_SONNET,
       max_tokens: 2000,
       messages: [
         {
@@ -81,7 +84,7 @@ Return ONLY valid JSON, no markdown or explanation.`,
     platform?: string
   ): Promise<{ content: string; changes: string[] }> {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: MODEL_SONNET,
       max_tokens: 1000,
       messages: [
         {
@@ -116,7 +119,7 @@ Return ONLY valid JSON.`,
     const targetCount = count || limits?.maxHashtags || 5;
 
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: MODEL_HAIKU,
       max_tokens: 500,
       messages: [
         {

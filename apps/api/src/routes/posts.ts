@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { AppEnv } from "../app.js";
 import { authMiddleware, orgMiddleware } from "../middleware/auth.js";
@@ -83,20 +83,19 @@ postsRouter.post("/", zValidator("json", createPostBody), async (c) => {
   const postId = nanoid();
   const status = body.scheduledAt ? "scheduled" : body.useQueue ? "queued" : "draft";
 
-  // Verify all target accounts belong to the organization
+  // Verify all target accounts belong to the organization (filtered in DB)
   const targetAccounts = await db
     .select()
     .from(socialAccounts)
     .where(
       and(
         eq(socialAccounts.organizationId, orgId),
-        eq(socialAccounts.isActive, true)
+        eq(socialAccounts.isActive, true),
+        inArray(socialAccounts.id, body.targetAccountIds)
       )
     );
 
-  const validAccountIds = new Set(targetAccounts.map((a: { id: string }) => a.id));
-  const invalidIds = body.targetAccountIds.filter((id: string) => !validAccountIds.has(id));
-  if (invalidIds.length > 0) {
+  if (targetAccounts.length !== body.targetAccountIds.length) {
     return c.json({ success: false, error: "Invalid target account IDs" }, 400);
   }
 
@@ -117,7 +116,7 @@ postsRouter.post("/", zValidator("json", createPostBody), async (c) => {
 
   // Create post targets
   const targetValues = body.targetAccountIds.map((accountId: string) => {
-    const account = targetAccounts.find((a: { id: string }) => a.id === accountId)!;
+    const account = targetAccounts.find((a) => a.id === accountId)!;
     return {
       id: nanoid(),
       postId,

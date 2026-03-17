@@ -12,6 +12,14 @@ const API_URL = process.env.BETTER_AUTH_URL || "http://localhost:3001";
 
 export const oauthCallbackRouter = new Hono<AppEnv>();
 
+// ─── Helper: consume OAuth state from Redis ─────────────────────
+async function getOAuthState(state: string) {
+  const raw = await redis.get(`oauth:state:${state}`);
+  if (!raw) return null;
+  await redis.del(`oauth:state:${state}`);
+  return JSON.parse(raw) as { userId: string; orgId: string; platform: string; codeVerifier: string };
+}
+
 // ─── OAuth Start (requires auth) ───────────────────────────────
 oauthCallbackRouter.get("/start/:platform", authMiddleware, async (c) => {
   const platform = c.req.param("platform");
@@ -104,6 +112,9 @@ async function saveSocialAccount(opts: {
   scopes: string[];
   accountType?: string;
 }) {
+  type SocialPlatform = "x" | "linkedin" | "bluesky" | "facebook" | "instagram";
+  const platform = opts.platform as SocialPlatform;
+
   // Check if account already connected to this org
   const existing = await db
     .select()
@@ -111,14 +122,13 @@ async function saveSocialAccount(opts: {
     .where(
       and(
         eq(socialAccounts.organizationId, opts.orgId),
-        eq(socialAccounts.platform, opts.platform as "x" | "linkedin" | "bluesky" | "facebook" | "instagram"),
+        eq(socialAccounts.platform, platform),
         eq(socialAccounts.platformAccountId, opts.platformAccountId)
       )
     )
     .limit(1);
 
   if (existing.length > 0) {
-    // Update tokens
     const [updated] = await db
       .update(socialAccounts)
       .set({
@@ -133,13 +143,12 @@ async function saveSocialAccount(opts: {
     return updated;
   }
 
-  // Create new
   const [account] = await db
     .insert(socialAccounts)
     .values({
       id: nanoid(),
       organizationId: opts.orgId,
-      platform: opts.platform as "x" | "linkedin" | "bluesky" | "facebook" | "instagram",
+      platform,
       platformAccountId: opts.platformAccountId,
       platformUsername: opts.platformUsername,
       displayName: opts.displayName,
@@ -166,14 +175,12 @@ oauthCallbackRouter.get("/callback/x", async (c) => {
   }
 
   try {
-    const stateData = await redis.get(`oauth:state:${state}`);
+    const stateData = await getOAuthState(state);
     if (!stateData) {
       return c.redirect(`${APP_URL}/accounts?error=invalid_state`);
     }
-    const { userId, orgId, codeVerifier } = JSON.parse(stateData);
-    await redis.del(`oauth:state:${state}`);
+    const { userId, orgId, codeVerifier } = stateData;
 
-    // Exchange code for token
     const tokenResponse = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
       headers: {
@@ -190,8 +197,7 @@ oauthCallbackRouter.get("/callback/x", async (c) => {
     });
 
     if (!tokenResponse.ok) {
-      const err = await tokenResponse.text();
-      console.error("X token exchange failed:", err);
+      console.error("X token exchange failed:", await tokenResponse.text());
       throw new Error("Token exchange failed");
     }
 
@@ -201,7 +207,6 @@ oauthCallbackRouter.get("/callback/x", async (c) => {
       expires_in: number;
     };
 
-    // Get user profile
     const profileResponse = await fetch(
       "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
       { headers: { Authorization: `Bearer ${tokens.access_token}` } }
@@ -241,12 +246,11 @@ oauthCallbackRouter.get("/callback/linkedin", async (c) => {
   }
 
   try {
-    const stateData = await redis.get(`oauth:state:${state}`);
+    const stateData = await getOAuthState(state);
     if (!stateData) {
       return c.redirect(`${APP_URL}/accounts?error=invalid_state`);
     }
-    const { userId, orgId } = JSON.parse(stateData);
-    await redis.del(`oauth:state:${state}`);
+    const { userId, orgId } = stateData;
 
     const tokenResponse = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
       method: "POST",
@@ -268,7 +272,6 @@ oauthCallbackRouter.get("/callback/linkedin", async (c) => {
       refresh_token?: string;
     };
 
-    // Get profile
     const profileResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
@@ -310,21 +313,18 @@ oauthCallbackRouter.get("/callback/facebook", async (c) => {
   }
 
   try {
-    const stateData = await redis.get(`oauth:state:${state}`);
+    const stateData = await getOAuthState(state);
     if (!stateData) {
       return c.redirect(`${APP_URL}/accounts?error=invalid_state`);
     }
-    const { userId, orgId } = JSON.parse(stateData);
-    await redis.del(`oauth:state:${state}`);
+    const { userId, orgId } = stateData;
 
-    // Exchange for short-lived token
     const tokenResponse = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&redirect_uri=${encodeURIComponent(`${API_URL}/oauth/callback/facebook`)}&code=${code}`
     );
     if (!tokenResponse.ok) throw new Error("Token exchange failed");
     const shortToken = (await tokenResponse.json()) as { access_token: string; expires_in: number };
 
-    // Exchange for long-lived token
     const longTokenResponse = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${shortToken.access_token}`
     );
@@ -332,7 +332,6 @@ oauthCallbackRouter.get("/callback/facebook", async (c) => {
       ? ((await longTokenResponse.json()) as { access_token: string; expires_in: number })
       : shortToken;
 
-    // Get profile
     const profileResponse = await fetch(
       `https://graph.facebook.com/v21.0/me?fields=id,name,picture&access_token=${longToken.access_token}`
     );
@@ -374,21 +373,18 @@ oauthCallbackRouter.get("/callback/instagram", async (c) => {
   }
 
   try {
-    const stateData = await redis.get(`oauth:state:${state}`);
+    const stateData = await getOAuthState(state);
     if (!stateData) {
       return c.redirect(`${APP_URL}/accounts?error=invalid_state`);
     }
-    const { userId, orgId } = JSON.parse(stateData);
-    await redis.del(`oauth:state:${state}`);
+    const { userId, orgId } = stateData;
 
-    // Exchange for token
     const tokenResponse = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&redirect_uri=${encodeURIComponent(`${API_URL}/oauth/callback/instagram`)}&code=${code}`
     );
     if (!tokenResponse.ok) throw new Error("Token exchange failed");
     const tokens = (await tokenResponse.json()) as { access_token: string; expires_in: number };
 
-    // Get IG business account via pages
     const pagesResponse = await fetch(
       `https://graph.facebook.com/v21.0/me/accounts?access_token=${tokens.access_token}`
     );
@@ -396,43 +392,49 @@ oauthCallbackRouter.get("/callback/instagram", async (c) => {
       data: Array<{ id: string; name: string; access_token: string }>;
     };
 
-    // Find Instagram account linked to pages
-    for (const page of pages.data || []) {
-      const igResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
-      );
-      const igData = (await igResponse.json()) as {
-        instagram_business_account?: { id: string };
-      };
+    // Check all pages in parallel for linked Instagram business accounts
+    const results = await Promise.all(
+      (pages.data || []).map(async (page) => {
+        const igResponse = await fetch(
+          `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
+        );
+        const igData = (await igResponse.json()) as {
+          instagram_business_account?: { id: string };
+        };
+        if (!igData.instagram_business_account) return null;
 
-      if (igData.instagram_business_account) {
-        // Get IG profile
         const igProfile = (await (
           await fetch(
             `https://graph.facebook.com/v21.0/${igData.instagram_business_account.id}?fields=username,name,profile_picture_url&access_token=${page.access_token}`
           )
         ).json()) as { id: string; username: string; name?: string; profile_picture_url?: string };
 
-        await saveSocialAccount({
-          userId,
-          orgId,
-          platform: "instagram",
-          platformAccountId: igData.instagram_business_account.id,
-          platformUsername: igProfile.username,
-          displayName: igProfile.name || igProfile.username,
-          avatarUrl: igProfile.profile_picture_url || null,
-          accessToken: page.access_token,
-          refreshToken: null,
-          expiresIn: null,
-          scopes: ["instagram_basic", "instagram_content_publish"],
-          accountType: "business",
-        });
+        return { page, igData, igProfile };
+      })
+    );
 
-        return c.redirect(`${APP_URL}/accounts?connected=instagram`);
-      }
+    const found = results.find((r) => r !== null);
+    if (!found) {
+      return c.redirect(`${APP_URL}/accounts?error=no_instagram_account`);
     }
 
-    return c.redirect(`${APP_URL}/accounts?error=no_instagram_account`);
+    const { page, igData, igProfile } = found;
+    await saveSocialAccount({
+      userId,
+      orgId,
+      platform: "instagram",
+      platformAccountId: igData.instagram_business_account!.id,
+      platformUsername: igProfile.username,
+      displayName: igProfile.name || igProfile.username,
+      avatarUrl: igProfile.profile_picture_url || null,
+      accessToken: page.access_token,
+      refreshToken: null,
+      expiresIn: null,
+      scopes: ["instagram_basic", "instagram_content_publish"],
+      accountType: "business",
+    });
+
+    return c.redirect(`${APP_URL}/accounts?connected=instagram`);
   } catch (error) {
     console.error("Instagram OAuth error:", error);
     return c.redirect(`${APP_URL}/accounts?error=instagram_oauth_failed`);

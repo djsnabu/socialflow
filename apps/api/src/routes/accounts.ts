@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import type { AppEnv } from "../app.js";
 import { authMiddleware, orgMiddleware } from "../middleware/auth.js";
 import { db } from "../lib/db.js";
@@ -57,26 +57,20 @@ accountsRouter.patch("/:id/toggle", async (c) => {
   const accountId = c.req.param("id");
   const orgId = c.get("organizationId");
 
-  const existing = await db
-    .select()
-    .from(socialAccounts)
+  const [updated] = await db
+    .update(socialAccounts)
+    .set({ isActive: sql`NOT ${socialAccounts.isActive}`, updatedAt: new Date() })
     .where(
       and(
         eq(socialAccounts.id, accountId),
         eq(socialAccounts.organizationId, orgId)
       )
     )
-    .limit(1);
+    .returning();
 
-  if (!existing.length) {
+  if (!updated) {
     return c.json({ success: false, error: "Account not found" }, 404);
   }
-
-  const [updated] = await db
-    .update(socialAccounts)
-    .set({ isActive: !existing[0].isActive, updatedAt: new Date() })
-    .where(eq(socialAccounts.id, accountId))
-    .returning();
 
   return c.json({ success: true, data: updated });
 });

@@ -46,7 +46,9 @@ export async function processPublishPost(job: Job<PublishJobData>) {
   let allSucceeded = true;
   let anySucceeded = false;
 
-  for (const target of targets) {
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+
     // Update target status
     await db
       .update(postTargets)
@@ -108,10 +110,7 @@ export async function processPublishPost(job: Job<PublishJobData>) {
         .where(eq(postTargets.id, target.id));
     }
 
-    // Log progress
-    await job.updateProgress(
-      Math.round(((targets.indexOf(target) + 1) / targets.length) * 100)
-    );
+    await job.updateProgress(Math.round(((i + 1) / targets.length) * 100));
   }
 
   // Update post status
