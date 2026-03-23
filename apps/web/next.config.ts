@@ -12,12 +12,20 @@ const nextConfig: NextConfig = {
         destination: `${apiInternal}/auth/:path*`,
       },
       {
-        source: "/api/:path*",
-        destination: `${apiInternal}/api/:path*`,
+        source: "/api/oauth/:path*",
+        destination: `${apiInternal}/oauth/:path*`,
       },
       {
         source: "/auth/:path*",
         destination: `${apiInternal}/auth/:path*`,
+      },
+      {
+        source: "/oauth/:path*",
+        destination: `${apiInternal}/oauth/:path*`,
+      },
+      {
+        source: "/api/:path*",
+        destination: `${apiInternal}/api/:path*`,
       },
     ];
   },
