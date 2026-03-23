@@ -22,9 +22,12 @@ RUN pnpm --filter @socialflow/api build
 # Production
 FROM base AS runner
 ENV NODE_ENV=production
+WORKDIR /app/apps/api
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package.json ./
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules /app/node_modules
+COPY --from=deps /app/apps/api/node_modules ./node_modules
+COPY --from=builder /app/packages /app/packages
 
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
