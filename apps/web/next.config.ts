@@ -1,17 +1,23 @@
 import type { NextConfig } from "next";
 
+const apiInternal = "http://api:3001";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@socialflow/shared"],
   async rewrites() {
     return [
       {
+        source: "/api/auth/:path*",
+        destination: `${apiInternal}/auth/:path*`,
+      },
+      {
         source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/:path*`,
+        destination: `${apiInternal}/api/:path*`,
       },
       {
         source: "/auth/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/:path*`,
+        destination: `${apiInternal}/auth/:path*`,
       },
     ];
   },
