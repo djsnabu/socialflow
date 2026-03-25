@@ -13,7 +13,6 @@ import {
 } from "@socialflow/db";
 
 export const auth = betterAuth({
-  basePath: "/auth",
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

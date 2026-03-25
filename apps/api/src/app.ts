@@ -33,6 +33,7 @@ app.use(
 app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 // Auth routes (no auth middleware)
+app.route("/api/auth", authRouter);
 app.route("/auth", authRouter);
 app.route("/oauth", oauthCallbackRouter);
 
