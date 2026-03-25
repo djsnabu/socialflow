@@ -135,7 +135,7 @@ async function saveSocialAccount(opts: {
         accessToken: opts.accessToken,
         refreshToken: opts.refreshToken,
         tokenExpiresAt: opts.expiresIn ? new Date(Date.now() + opts.expiresIn * 1000) : null,
-        scopes: opts.scopes,
+        tokenScopes: opts.scopes,
         updatedAt: new Date(),
       })
       .where(eq(socialAccounts.id, existing[0].id))
@@ -156,7 +156,7 @@ async function saveSocialAccount(opts: {
       accessToken: opts.accessToken,
       refreshToken: opts.refreshToken,
       tokenExpiresAt: opts.expiresIn ? new Date(Date.now() + opts.expiresIn * 1000) : null,
-      scopes: opts.scopes,
+      tokenScopes: opts.scopes,
       accountType: (opts.accountType || "personal") as "personal" | "page" | "business",
       connectedBy: opts.userId,
     })
