@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/auth/:path*",
-        destination: `${apiInternal}/auth/:path*`,
+        destination: `${apiInternal}/api/auth/:path*`,
       },
       {
         source: "/api/oauth/:path*",
@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/auth/:path*",
-        destination: `${apiInternal}/auth/:path*`,
+        destination: `${apiInternal}/api/auth/:path*`,
       },
       {
         source: "/oauth/:path*",
