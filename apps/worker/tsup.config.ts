@@ -1,7 +1,11 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["esm"],
-  noExternal: ["@socialflow/db", "@socialflow/shared"],
+  entry: ['src/index.ts'],
+  format: ['cjs'],
+  noExternal: [/.*/],
+  splitting: false,
+  clean: true,
+  minify: false,
+  sourcemap: true,
 });

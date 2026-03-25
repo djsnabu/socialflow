@@ -9,11 +9,19 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="flex h-screen">
+      <div style={{ display: "flex", height: "100dvh", overflow: "hidden" }}>
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)" }}>
           <Header />
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+          <main
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "24px 28px",
+            }}
+          >
+            {children}
+          </main>
         </div>
       </div>
     </AuthGuard>

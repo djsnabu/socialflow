@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --dts",
-    "start": "node dist/index.js",
+    "build": "tsup",
+    "start": "node dist/index.cjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/"
   },
