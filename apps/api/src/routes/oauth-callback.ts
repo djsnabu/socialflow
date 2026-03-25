@@ -84,7 +84,7 @@ oauthCallbackRouter.get("/start/:platform", authMiddleware, async (c) => {
         client_id: process.env.META_APP_ID!,
         redirect_uri: redirectUri,
         state,
-        scope: "instagram_business_basic,instagram_business_content_publish,pages_show_list",
+        scope: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
         response_type: "code",
       });
       authUrl = `https://www.facebook.com/v21.0/dialog/oauth?${params}`;
