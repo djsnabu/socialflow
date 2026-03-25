@@ -38,7 +38,7 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: "3001"
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: https://social.kivamedia.fi/api
+      BETTER_AUTH_URL: https://social.kivamedia.fi
       NEXT_PUBLIC_APP_URL: https://social.kivamedia.fi
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
